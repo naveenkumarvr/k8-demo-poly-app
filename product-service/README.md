@@ -60,7 +60,8 @@ product-service/
 │   ├── client.go           # Connection pool with retry logic
 │   ├── repository.go       # Product repository (CRUD operations)
 │   ├── schema.sql          # Database schema with indexes
-│   └── seed.sql            # Sample product data
+│   ├── seed.sql            # Sample product data
+│   └── reset_and_seed.sql  # Script to truncate and re-seed database
 ├── handlers/               # HTTP request handlers
 │   ├── products.go         # Product endpoints (uses repository)
 │   ├── stress.go           # CPU stress testing endpoint
@@ -358,6 +359,9 @@ curl "http://localhost:8090/products?category=Electronics" -UseBasicParsing
 # Check that products were loaded
 docker-compose exec postgres psql -U productuser -d products -c "SELECT COUNT(*) FROM products;"
 # Expected output: 16 products
+
+# ⚠️ If count is 0, seed the database manually:
+docker exec -i poly-shop-postgres psql -U productuser -d products < product-service/database/reset_and_seed.sql
 
 # View sample products
 docker-compose exec postgres psql -U productuser -d products -c "SELECT id, name, price, category FROM products LIMIT 5;"

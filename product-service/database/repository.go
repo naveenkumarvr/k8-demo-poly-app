@@ -53,7 +53,7 @@ func (r *PostgresProductRepository) GetAllProducts(ctx context.Context) ([]Produ
 	defer span.End()
 
 	query := `
-		SELECT id, name, description, price, stock, category, image_url, created_at, updated_at
+		SELECT id, name, description, price::float8, stock, category, image_url, created_at, updated_at
 		FROM products
 		ORDER BY category, name
 	`
@@ -113,7 +113,7 @@ func (r *PostgresProductRepository) GetProductByID(ctx context.Context, id int) 
 	defer span.End()
 
 	query := `
-		SELECT id, name, description, price, stock, category, image_url, created_at, updated_at
+		SELECT id, name, description, price::float8, stock, category, image_url, created_at, updated_at
 		FROM products
 		WHERE id = $1
 	`
@@ -158,7 +158,7 @@ func (r *PostgresProductRepository) GetProductsByCategory(ctx context.Context, c
 	defer span.End()
 
 	query := `
-		SELECT id, name, description, price, stock, category, image_url, created_at, updated_at
+		SELECT id, name, description, price::float8, stock, category, image_url, created_at, updated_at
 		FROM products
 		WHERE category = $1
 		ORDER BY name

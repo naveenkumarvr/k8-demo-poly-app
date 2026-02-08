@@ -1,0 +1,18 @@
+# Build artifacts (will be regenerated in Docker)
+target/
+
+# IDE files
+.idea/
+.vscode/
+.DS_Store
+
+# Git history
+.git/
+.gitignore
+
+# Documentation (not needed in image)
+README.md
+*.md
+
+# Keep pom.xml - REQUIRED for Maven build!
+# Keep src/ - REQUIRED for compilation and tests!
