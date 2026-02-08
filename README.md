@@ -99,6 +99,10 @@ curl http://localhost:8080/v1/cart/user-123
 
 **PostgreSQL** (Product Catalog):
 ```bash
+# ⚠️ If database is empty, run this command to seed sample data:
+docker exec -i poly-shop-postgres psql -U productuser -d products < product-service/database/reset_and_seed.sql
+
+# Connect to database
 docker-compose exec postgres psql -U productuser -d products
 
 # View products
@@ -116,32 +120,67 @@ KEYS *
 HGETALL cart:user-123
 ```
 
-## 🧪 Testing Distributed Tracing
+## 🧪 Integration Testing
 
-### End-to-End User Journey
+Verify the complete end-to-end flow using the provided test scripts.
+
+### Automated Integration Tests
+
+**Windows (PowerShell):**
+```powershell
+.\test-integration.ps1
+```
+
+**Linux / WSL (Bash):**
+```bash
+bash test-integration.sh
+```
+
+### What is Tested?
+
+The integration scripts perform a full verification of the system:
+
+1. **Product Discovery** (Product Service + PostgreSQL)
+   - Lists all available products
+   - Fetches details for a specific product
+   - verifies database connectivity and data seeding
+
+2. **Cart Management** (Cart Service + Redis)
+   - Creates a new cart for a test user
+   - Adds multiple items to the cart
+   - Persists data to Redis
+   - Retrieves cart summary to verify state
+
+3. **Checkout Flow** (Checkout Service + Cart Service)
+   - Initiates checkout for the user
+   - **Checkout Service** calls **Cart Service** to fetch items (s2s communication)
+   - Calculates totals and processes "payment"
+   - Returns a transaction ID
+
+4. **Observability** (OpenTelemetry + Jaeger)
+   - Verifies that a **Trace ID** is generated and propagated
+   - Confirms that traces are exportable to Jaeger
+
+### Manual Verification Commands
+
+You can also manually test individual endpoints:
 
 ```bash
-# 1. Browse products (Product Service → PostgreSQL)
-curl http://localhost:8090/products?category=Electronics
+# 1. Get Products
+curl http://localhost:8090/products
 
-# 2. Add to cart (Cart Service → Redis)
-curl -X POST http://localhost:8080/v1/cart/shopper-001 `
-  -H "Content-Type: application/json" `
-  -d '{\"product_id\":\"1\",\"quantity\":1}'
+# 2. Add to Cart
+curl -X POST http://localhost:8080/v1/cart/manual-user \
+  -H "Content-Type: application/json" \
+  -d '{"product_id":"1","quantity":2}'
 
-# 3. View Jaeger UI
-# Open http://localhost:16686
-# Select service: product-service or cart-service
-# Click "Find Traces"
-```
+# 3. Checkout
+curl -X POST http://localhost:8085/checkout \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"manual-user"}'
 
-**Trace Example**:
-```
-HTTP GET /products
-├─ repository.GetProductsByCategory (PostgreSQL)
-│  ├─ db.query.duration_ms: 12
-│  └─ db.result.count: 5
-└─ http.status_code: 200
+# 4. Check Currency Rates
+curl "http://localhost:8085/currency/convert?amount=100&from=USD&to=EUR"
 ```
 
 ## 🛠️ Development Commands

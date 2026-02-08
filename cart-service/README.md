@@ -43,6 +43,21 @@ cart:user-123
   prod-xyz: 5
 ```
 
+### Project Structure
+
+```
+cart-service/
+├── main.go                 # Application entry point
+├── Dockerfile              # Multi-stage Docker build
+├── handlers/               # HTTP request handlers (Add, Get, Delete)
+├── redis/                  # Redis client and repository implementation
+├── middleware/             # Gin middleware (logging, tracing)
+├── logger/                 # Structured logging configuration (Zap)
+├── telemetry/              # OpenTelemetry trace configuration
+├── docker-compose.yml      # Local development stack
+└── scripts/                # k6 load testing scripts
+```
+
 ## API Contract
 
 ### Cart Operations

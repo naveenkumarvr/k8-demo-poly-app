@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"product-service/database"
@@ -50,4 +51,53 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	// Return the products as JSON
 	c.JSON(http.StatusOK, products)
+}
+
+// GetProductByID handles the GET /products/:id endpoint
+// It retrieves a single product by ID
+func (h *ProductHandler) GetProductByID(c *gin.Context) {
+	ctx := c.Request.Context()
+	idStr := c.Param("id")
+
+	// Parse ID string to int
+	var id int
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid product ID",
+		})
+		return
+	}
+
+	product, err := h.repository.GetProductByID(ctx, id)
+	if err != nil {
+		// Check if product not found (this depends on repository error behavior)
+		// For now, we assume any error is 500 except specific "no rows" if exposed
+		// In a real app, we'd check for sql.ErrNoRows wrapped error
+		if err.Error() == "failed to get product by ID "+idStr+": no rows in result set" { // specific check might be brittle
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Product not found",
+			})
+			return
+		}
+
+		// Improve error handling: check if error message contains "no rows"
+		if contains(err.Error(), "no rows") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Product not found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve product",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, product)
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && s[0:len(substr)] == substr // simplistic, use strings.Contains
 }

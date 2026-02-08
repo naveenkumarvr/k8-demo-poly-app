@@ -1,0 +1,66 @@
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE Files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.properties
+dependency-reduced-pom.xml
+
+# Go
+vendor/
+bin/
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Python (if applicable)
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Javascript / Node (if applicable)
+node_modules/
+dist/
+build/
+coverage/
+
+# Docker
+.docker/
+
+# Deployment & Secrets
+.env
+.env.*
+!*.example
+*.pem
+*.key
+*.crt
+
+# Logs & Temporary Files
+*.log
+temp/
+tmp/
+test_output_*.txt
+*.swp
+
+# Terraform (if applicable)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Local Development Overrides
+docker-compose.override.yml

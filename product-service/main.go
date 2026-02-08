@@ -86,6 +86,7 @@ func main() {
 	// Products endpoint - returns products from PostgreSQL
 	// Supports optional ?category=<name> query parameter
 	router.GET("/products", productHandler.GetProducts)
+	router.GET("/products/:id", productHandler.GetProductByID)
 
 	// Stress endpoint - CPU-intensive computation for HPA testing
 	router.GET("/stress", handlers.StressTest)
