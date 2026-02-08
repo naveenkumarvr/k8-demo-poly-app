@@ -1,13 +1,13 @@
 import React from 'react';
 import { useCart } from '../context/CartContext.jsx';
-import { X, ShoppingBag } from 'lucide-react';
+import { X, ShoppingBag, Trash2 } from 'lucide-react';
 
 export default function CartOverlay() {
-    const { cartItems, isOpen, setIsOpen, checkout } = useCart();
+    const { cartItems, isOpen, setIsOpen, checkout, removeFromCart } = useCart();
 
     if (!isOpen) return null;
 
-    const total = cartItems.reduce((sum, item) => sum + (item.price_usd?.units * item.quantity || 0), 0);
+    const total = cartItems.reduce((sum, item) => sum + ((typeof item.price === 'number' ? item.price : 0) * item.quantity), 0);
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -40,16 +40,23 @@ export default function CartOverlay() {
                     ) : (
                         cartItems.map((item, idx) => (
                             <div key={idx} className="flex gap-4 border-b pb-4">
-                                <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden">
-                                    <img src={item.picture} alt={item.name} className="w-full h-full object-cover" />
+                                <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                                    <img src={item.image_url || item.picture} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="font-medium">{item.name}</h3>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-medium truncate">{item.name}</h3>
                                     <p className="text-gray-500 text-sm">Qty: {item.quantity}</p>
                                     <p className="font-semibold mt-1">
-                                        ${item.price_usd?.units}.{item.price_usd?.nanos?.toString().padStart(2, '0').slice(0, 2)}
+                                        ${typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
                                     </p>
                                 </div>
+                                <button
+                                    onClick={() => removeFromCart(item.id)}
+                                    className="self-start p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                    aria-label="Remove item"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                         ))
                     )}
@@ -58,7 +65,7 @@ export default function CartOverlay() {
                 <div className="p-4 border-t bg-gray-50">
                     <div className="flex justify-between mb-4 text-lg font-bold">
                         <span>Total</span>
-                        <span>${total}</span>
+                        <span>${total.toFixed(2)}</span>
                     </div>
                     <button
                         onClick={checkout}

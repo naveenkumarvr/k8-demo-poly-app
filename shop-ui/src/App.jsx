@@ -3,10 +3,11 @@ import { Routes, Route, Link } from 'react-router-dom';
 import { ShoppingCart, Package } from 'lucide-react';
 import Home from './pages/Home';
 import CartOverlay from './components/CartOverlay';
+import CheckoutSuccessModal from './components/CheckoutSuccessModal';
 import { CartProvider, useCart } from './context/CartContext';
 
 function Layout({ children }) {
-  const { cartItems, setIsOpen } = useCart();
+  const { cartItems, setIsOpen, checkoutResponse, setCheckoutResponse } = useCart();
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -44,6 +45,10 @@ function Layout({ children }) {
       </footer>
 
       <CartOverlay />
+      <CheckoutSuccessModal
+        transaction={checkoutResponse}
+        onClose={() => setCheckoutResponse(null)}
+      />
     </div>
   );
 }

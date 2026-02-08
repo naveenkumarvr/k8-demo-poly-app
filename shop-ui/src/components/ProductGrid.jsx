@@ -15,7 +15,7 @@ export default function ProductGrid({ products }) {
                 <div key={product.id} className="group bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow overflow-hidden flex flex-col">
                     <div className="aspect-square bg-gray-50 relative overflow-hidden">
                         <img
-                            src={product.picture}
+                            src={product.image_url}
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -25,7 +25,7 @@ export default function ProductGrid({ products }) {
                         <p className="text-gray-500 text-sm line-clamp-2 flex-1 mb-3">{product.description}</p>
                         <div className="flex items-center justify-between mt-auto">
                             <span className="font-bold text-lg text-blue-600">
-                                ${product.price_usd?.units}.{product.price_usd?.nanos?.toString().padStart(2, '0').slice(0, 2)}
+                                ${typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'}
                             </span>
                             <button
                                 onClick={() => addToCart(product)}

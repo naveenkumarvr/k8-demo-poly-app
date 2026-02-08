@@ -16,7 +16,8 @@ export default function Home() {
 
                 if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
                     const data = await productsRes.value.json();
-                    setProducts(data.products || data);
+                    // API returns array directly
+                    setProducts(Array.isArray(data) ? data : (data.products || []));
                 }
 
                 if (adsRes.status === 'fulfilled' && adsRes.value.ok) {
