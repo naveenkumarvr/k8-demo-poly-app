@@ -175,6 +175,24 @@ services:
     networks:
       - poly-shop-net
     restart: unless-stopped
+  # Shop UI - Frontend Application
+  shop-ui:
+    build:
+      context: ./shop-ui
+      dockerfile: Dockerfile
+    container_name: poly-shop-ui
+    ports:
+      - "8070:8080"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - product-service
+      - cart-service
+      - checkout-service
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+
   # ============================================================================
   # OPTIONAL - Log Shipping Sidecar for Cart Service
   # ============================================================================
