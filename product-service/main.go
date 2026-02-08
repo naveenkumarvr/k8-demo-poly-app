@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"product-service/database"
 	"product-service/handlers"
 	"product-service/middleware"
 	"product-service/telemetry"
@@ -22,7 +23,8 @@ func main() {
 	serviceVersion := getEnv("SERVICE_VERSION", "1.0.0")
 	environment := getEnv("ENVIRONMENT", "development")
 	otlpEndpoint := getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
-	port := getEnv("PORT", "8080")
+	port := getEnv("PORT", "8090") // Changed default port from 8080 to 8090
+	databaseURL := getEnv("DATABASE_URL", "postgres://productuser:productpass@localhost:5432/products?sslmode=disable")
 
 	// Initialize OpenTelemetry tracer
 	// The shutdown function ensures all spans are flushed before exit
@@ -44,6 +46,25 @@ func main() {
 		}
 	}()
 
+	// Initialize database connection
+	log.Println("Connecting to database...")
+	dbClient, err := database.NewClient(context.Background(), database.Config{
+		DatabaseURL: databaseURL,
+		MaxRetries:  5,
+		ServiceName: serviceName,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer dbClient.Close()
+	log.Println("Database connection established")
+
+	// Create repository for database operations
+	productRepo := database.NewProductRepository(dbClient)
+
+	// Create product handler with repository
+	productHandler := handlers.NewProductHandler(productRepo)
+
 	// Set Gin mode based on environment
 	if environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -62,14 +83,15 @@ func main() {
 	router.Use(middleware.TracingMiddleware(serviceName))
 
 	// Register API routes
-	// Products endpoint - returns mock inventory data
-	router.GET("/products", handlers.GetProducts)
+	// Products endpoint - returns products from PostgreSQL
+	// Supports optional ?category=<name> query parameter
+	router.GET("/products", productHandler.GetProducts)
 
 	// Stress endpoint - CPU-intensive computation for HPA testing
 	router.GET("/stress", handlers.StressTest)
 
 	// Health check endpoints for Kubernetes probes
-	router.GET("/healthz", handlers.Healthz)
+	router.GET("/healthz", handlers.Healthz(dbClient))
 	router.GET("/ready", handlers.Ready)
 	router.GET("/live", handlers.Live)
 
