@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # Redis service for cart data storage
+  redis:
+    image: redis:7-alpine
+    container_name: cart-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cart-network
+
+  # Cart service - the main application
+  cart-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cart-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=cart-service
+      - SERVICE_VERSION=1.0.0
+      - ENVIRONMENT=development
+      - REDIS_ADDR=redis:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - PORT=8080
+      - POD_NAME=docker-compose-cart
+      - NODE_NAME=localhost
+    volumes:
+      # Shared volume for log file access by sidecar
+      - cart-logs:/var/log/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cart-network
+
+  # Log shipper sidecar - simulates shipping logs to centralized logging
+  log-shipper:
+    image: alpine:latest
+    container_name: cart-log-shipper
+    command: >
+      sh -c "echo 'Waiting for log file...' &&
+             while [ ! -f /var/log/app/cart-service.log ]; do sleep 1; done &&
+             echo 'Log file found, starting to tail...' &&
+             tail -F /var/log/app/cart-service.log"
+    volumes:
+      # Read-only access to the same log directory
+      - cart-logs:/var/log/app:ro
+    depends_on:
+      - cart-service
+    networks:
+      - cart-network
+
+  # OpenTelemetry Collector with Jaeger for trace visualization
+  otel-collector:
+    image: jaegertracing/all-in-one:latest
+    container_name: cart-otel-collector
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - cart-network
+
+volumes:
+  # Shared volume for logs (sidecar pattern)
+  cart-logs:
+    driver: local
+  # Persistent volume for Redis data
+  redis-data:
+    driver: local
+
+networks:
+  cart-network:
+    driver: bridge

@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+walkthrough.md
+*.md
+!go.mod
+
+# Test files
+*_test.go
+**/*_test.go
+coverage.out
+coverage.html
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+*.tmp
+
+# Build artifacts (local builds)
+cart-service
+cart-service.exe
+*.exe
+
+# Docker
+docker-compose.yml
+.dockerignore
+
+# Scripts
+scripts/
