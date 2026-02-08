@@ -1,0 +1,189 @@
+# Poly-Shop Suite - Master Docker Compose Orchestration
+# Orchestrates Cart-Service + Product-Service + Shared Infrastructure
+#
+# Services:
+# - cart-service (port 8080) + Redis
+# - product-service (port 8090) + PostgreSQL  
+# - Jaeger (all-in-one) for distributed tracing
+#
+# Network: poly-shop-net (custom bridge)
+
+services:
+  # ============================================================================
+  # INFRASTRUCTURE - Databases & Cache
+  # ============================================================================
+
+  # Redis for Cart-Service
+  redis:
+    image: redis:7-alpine
+    container_name: poly-shop-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+
+  # PostgreSQL for Product-Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: poly-shop-postgres
+    environment:
+      POSTGRES_DB: products
+      POSTGRES_USER: productuser
+      POSTGRES_PASSWORD: productpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./product-service/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./product-service/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U productuser -d products" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+
+  # ============================================================================
+  # OBSERVABILITY - Distributed Tracing
+  # ============================================================================
+
+  # Jaeger All-in-One (Collector + Query + UI)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: poly-shop-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+      - "14268:14268" # Jaeger collector HTTP
+      - "9411:9411" # Zipkin compatible endpoint
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+
+  # ============================================================================
+  # MICROSERVICES - Application Layer
+  # ============================================================================
+
+  # Product Service - Product Catalog Management
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: poly-shop-product-service
+    ports:
+      - "8090:8090"
+    environment:
+      - SERVICE_NAME=product-service
+      - SERVICE_VERSION=1.0.0
+      - ENVIRONMENT=production
+      - PORT=8090
+      - DATABASE_URL=postgres://productuser:productpass@postgres:5432/products?sslmode=disable
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - POD_NAME=poly-shop-product
+      - NODE_NAME=docker-compose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8090/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+
+  # Cart Service - Shopping Cart Management
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    container_name: poly-shop-cart-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=cart-service
+      - SERVICE_VERSION=1.0.0
+      - ENVIRONMENT=production
+      - PORT=8080
+      - REDIS_ADDR=redis:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - POD_NAME=poly-shop-cart
+      - NODE_NAME=docker-compose
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+  # ============================================================================
+  # OPTIONAL - Log Shipping Sidecar for Cart Service
+  # ============================================================================
+
+  # Uncomment if you need log shipping functionality
+  cart-log-shipper:
+    image: alpine:latest
+    container_name: poly-shop-cart-log-shipper
+    command: sh -c "while true; do tail -f /var/log/app/cart-service.log 2>/dev/null || sleep 5; done"
+    volumes:
+      - cart-logs:/var/log/app
+    depends_on:
+      - cart-service
+    networks:
+      - poly-shop-net
+    restart: unless-stopped
+  # ============================================================================
+  # VOLUMES - Persistent Data Storage
+  # ============================================================================
+
+volumes:
+  # Redis persistence for cart data
+  redis-data:
+    driver: local
+    name: poly-shop-redis-data
+
+  # PostgreSQL persistence for product catalog
+  postgres-data:
+    driver: local
+    name: poly-shop-postgres-data
+  # Optional: Cart service logs
+  cart-logs:
+    driver: local
+    name: poly-shop-cart-logs
+  # ============================================================================
+  # NETWORKS - Service Communication
+  # ============================================================================
+
+networks:
+  poly-shop-net:
+    driver: bridge
+    name: poly-shop-net
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
