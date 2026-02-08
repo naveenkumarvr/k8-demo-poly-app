@@ -1,31 +1,75 @@
 # Product-Service
 
-A production-grade Go microservice for Poly-Shop's inventory management, featuring OpenTelemetry instrumentation, comprehensive testing, and Kubernetes-ready health probes.
+Production-ready microservice for managing product catalog with PostgreSQL backend, OpenTelemetry tracing, and comprehensive observability. Part of the Poly-Shop microservices suite.
 
 ## Overview
 
-The Product-Service is a core component of the Poly-Shop microservices suite. It provides a RESTful API for product inventory management and includes CPU-intensive endpoints for Horizontal Pod Autoscaler (HPA) testing.
-
-**Key Features:**
-- 🚀 **High Performance**: Built with Gin framework
-- 📊 **Full Observability**: OpenTelemetry instrumentation with W3C Trace Context propagation
-- 🧪 **Well Tested**: 85%+ code coverage with unit and integration tests
-- 🔒 **Secure**: Runs as non-root user in Google Distroless container
-- ☸️ **Kubernetes Ready**: Health probes and HPA-compatible stress endpoint
+Product-Service provides a REST API for product catalog management with:
+- **PostgreSQL Backend**: Persistent product storage with connection pooling and retry logic
+- **Repository Pattern**: Clean abstraction layer for database operations
+- **OpenTelemetry**: Full distributed tracing with W3C Trace Context propagation
+- **Category Filtering**: Query products by category for efficient browsing
+- **Database Health Checks**: Monitor PostgreSQL connectivity via `/healthz` endpoint
+- **Sample Data**: Pre-loaded with 16 products across 4 categories
+- **Production-Ready**: Distroless container, graceful shutdown, retry logic
 
 ## Architecture
 
+```mermaid
+graph LR
+    Client[HTTP Client] -->|GET /products| ProductService[Product Service :8090]
+    ProductService -->|OTLP/gRPC| Collector[OTel Collector]
+    ProductService -->|SQL Query| PostgreSQL[(PostgreSQL)]
+    Collector -->|Traces| Jaeger[Jaeger UI :16687]
+    PostgreSQL -->|Schema + Seed| InitScripts[docker-entrypoint-initdb.d]
+```
+
+### Database Schema
+
+```sql
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL CHECK (price >= 0),
+    stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    category VARCHAR(100),
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for query performance
+CREATE INDEX idx_products_category ON products(category);
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_price ON products(price);
+```
+
+**Sample Categories**:
+- Electronics (MacBook, iPhone, Headphones, TV, Monitor)
+- Clothing (Jeans, Sneakers, Jacket, Shirt)
+- Books (Tech books, Business, Fiction)
+- Home & Garden (Chair, Vacuum, Mixer, Grill)
+
+### Project Structure
+
 ```
 product-service/
-├── main.go                 # Application entry point
+├── main.go                 # Application entry point with DB initialization
+├── database/               # PostgreSQL integration
+│   ├── client.go           # Connection pool with retry logic
+│   ├── repository.go       # Product repository (CRUD operations)
+│   ├── schema.sql          # Database schema with indexes
+│   └── seed.sql            # Sample product data
 ├── handlers/               # HTTP request handlers
-│   ├── products.go         # Product inventory endpoint
+│   ├── products.go         # Product endpoints (uses repository)
 │   ├── stress.go           # CPU stress testing endpoint
-│   └── health.go           # Health check endpoints
+│   └── health.go           # Health checks with DB ping
 ├── telemetry/              # OpenTelemetry configuration
 │   └── tracer.go           # OTLP/gRPC exporter setup
 ├── middleware/             # Gin middleware
 │   └── tracing.go          # Trace context propagation
+├── docker-compose.yml      # Local stack (postgres + service + jaeger)
 └── scripts/                # Testing and utilities
     └── k6-test.js          # Load testing script
 ```
@@ -36,23 +80,39 @@ product-service/
 
 **GET /products**
 
-Returns a list of available products in the inventory.
+Returns all products from PostgreSQL database.
 
 **Response:** `200 OK`
 ```json
 [
   {
     "id": 1,
-    "name": "Wireless Headphones",
-    "description": "Premium noise-cancelling wireless headphones with 30-hour battery life",
-    "price": 199.99,
-    "image_url": "https://images.example.com/headphones.jpg"
+    "name": "MacBook Pro 16\"",
+    "description": "Apple M3 Max chip with 16-core CPU and 40-core GPU, 64GB unified memory, 1TB SSD storage",
+    "price": 3499.00,
+    "stock": 25,
+    "category": "Electronics",
+    "image_url": "https://picsum.photos/seed/laptop1/400/300",
+    "created_at": "2026-02-08T14:13:44.951622Z",
+    "updated_at": "2026-02-08T14:13:44.951622Z"
   },
   ...
 ]
 ```
 
-**Custom Span:** Creates a `fetch_products_from_database` span with 50-100ms simulated database latency.
+**GET /products?category={categoryName}**
+
+Filter products by category.
+
+**Query Parameters:**
+- `category` (optional): Category name (e.g., "Electronics", "Clothing", "Books", "Home & Garden")
+
+**Example:**
+```bash
+curl "http://localhost:8090/products?category=Electronics"
+```
+
+**OpenTelemetry Spans:** Creates `repository.GetAllProducts` or `repository.GetProductsByCategory` spans with actual database query timing.
 
 ---
 
@@ -91,13 +151,27 @@ Performs CPU-intensive recursive Fibonacci calculation for HPA testing.
 
 **GET /healthz**
 
-General health check endpoint.
+Health check with database connectivity monitoring.
 
-**Response:** `200 OK`
+**Response:** `200 OK` (when healthy)
 ```json
 {
-  "status": "ok",
-  "service": "product-service"
+  "status": "healthy",
+  "service": "product-service",
+  "pod_name": "docker-compose-product",
+  "node_name": "localhost",
+  "database": "healthy"
+}
+```
+
+**Response:** `503 Service Unavailable` (when database is down)
+```json
+{
+  "status": "unhealthy",
+  "service": "product-service",
+  "pod_name": "docker-compose-product",
+  "node_name": "localhost",
+  "database": "unhealthy"
 }
 ```
 
@@ -242,10 +316,57 @@ docker run -d `
 | `SERVICE_NAME` | Service identifier for traces | `product-service` |
 | `SERVICE_VERSION` | Service version | `1.0.0` |
 | `ENVIRONMENT` | Deployment environment | `development` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTel Collector endpoint | `localhost:4317` |
-| `PORT` | HTTP server port | `8080` |
+| `PORT` | HTTP server port | `8090` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://productuser:productpass@localhost:5432/products?sslmode=disable` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTel Collector endpoint (gRPC) | `localhost:4317` |
+| `POD_NAME` | Pod name for health check | `docker-compose-product` |
+| `NODE_NAME` | Node name for health check | `localhost` |
 
 Copy `.env.example` to `.env` and update as needed.
+
+## Quick Start
+
+### With Docker Compose (Recommended)
+
+The easiest way to run product-service with PostgreSQL:
+
+```bash
+# Navigate to product-service directory
+cd d:\code\poly-app\product-service
+
+# Start PostgreSQL and OTel Collector first (wait for health check)
+docker-compose up -d postgres otel-collector
+
+# Wait for PostgreSQL to initialize (schema + seed data)
+Start-Sleep -Seconds 10
+
+# Start product-service
+docker-compose up -d product-service
+
+# Check service health
+curl http://localhost:8090/healthz -UseBasicParsing
+
+# Get all products
+curl http://localhost:8090/products -UseBasicParsing
+
+# Filter by category
+curl "http://localhost:8090/products?category=Electronics" -UseBasicParsing
+```
+
+**Verify Database Initialization:**
+```bash
+# Check that products were loaded
+docker-compose exec postgres psql -U productuser -d products -c "SELECT COUNT(*) FROM products;"
+# Expected output: 16 products
+
+# View sample products
+docker-compose exec postgres psql -U productuser -d products -c "SELECT id, name, price, category FROM products LIMIT 5;"
+```
+
+**Access Services:**
+- **Product API**: http://localhost:8090
+- **Jaeger UI**: http://localhost:16687
+- **PostgreSQL**: localhost:5432 (user: productuser, password: productpass, db: products)
 
 ## Testing
 

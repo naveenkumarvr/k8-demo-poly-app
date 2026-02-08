@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"net/http"
+	"os"
+
+	"product-service/database"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,14 +15,39 @@ type HealthResponse struct {
 	Service string `json:"service"`
 }
 
-// Healthz handles the /healthz endpoint
-// This is the general health check endpoint
-// Returns HTTP 200 if the service is running
-func Healthz(c *gin.Context) {
-	c.JSON(http.StatusOK, HealthResponse{
-		Status:  "ok",
-		Service: "product-service",
-	})
+// Healthz is a simple health check endpoint
+// Returns 200 OK if the service is healthy
+// In production, this should check:
+// - Application status
+// - Database connectivity
+// - External service connectivity
+func Healthz(dbClient *database.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Check database health
+		dbStatus := "healthy"
+		statusCode := http.StatusOK
+
+		if dbClient != nil {
+			if err := dbClient.Ping(c.Request.Context()); err != nil {
+				dbStatus = "unhealthy"
+				statusCode = http.StatusServiceUnavailable
+			}
+		}
+
+		response := gin.H{
+			"status":    "healthy",
+			"service":   "product-service",
+			"pod_name":  os.Getenv("POD_NAME"),
+			"node_name": os.Getenv("NODE_NAME"),
+			"database":  dbStatus,
+		}
+
+		if statusCode != http.StatusOK {
+			response["status"] = "unhealthy"
+		}
+
+		c.JSON(statusCode, response)
+	}
 }
 
 // Ready handles the /ready endpoint
