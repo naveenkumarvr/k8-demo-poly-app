@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Fix for button z-index and clickability */
+button {
+    position: relative;
+    z-index: 10;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* Ensure product cards don't block buttons */
+.group {
+    position: relative;
+}
+
+/* Ensure clickable elements are accessible */
+[role="button"],
+button,
+a {
+    cursor: pointer;
+    pointer-events: auto !important;
+}

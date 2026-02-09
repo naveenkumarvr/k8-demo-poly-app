@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: poly-shop-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: poly-shop.local
+    http:
+      paths:
+      # Shop UI (no rewrite needed for root, but with regex we need care)
+      # Actually for root / we can use Exact or Prefix without capture if we don't rewrite
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: shop-ui-service
+            port:
+              number: 80
+      
+      # Product Service
+      - path: /api/products(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: product-service
+            port:
+              number: 8090
+
+      # Cart Service
+      - path: /api/cart(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: cart-service
+            port:
+              number: 8080
+
+      # Checkout Service
+      - path: /api/checkout(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: checkout-service
+            port:
+              number: 8085
