@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
@@ -11,6 +12,7 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
+    const { userId } = useAuth();
     const [cartItems, setCartItems] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +21,7 @@ export const CartProvider = ({ children }) => {
     const fetchCart = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/cart/guest'); // GET /cart/:user_id
+            const response = await fetch(`/api/cart/${userId}`); // GET /cart/:user_id
             if (response.ok) {
                 const cartData = await response.json();
                 const items = cartData.items || [];
@@ -57,7 +59,7 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = async (product) => {
         try {
-            const response = await fetch('/api/cart/guest', {
+            const response = await fetch(`/api/cart/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: String(product.id), quantity: 1 }),
@@ -78,11 +80,11 @@ export const CartProvider = ({ children }) => {
             const itemsToKeep = cartItems.filter(item => String(item.id) !== String(productId));
 
             // Clear the cart
-            await fetch('/api/cart/guest', { method: 'DELETE' });
+            await fetch(`/api/cart/${userId}`, { method: 'DELETE' });
 
             // Re-add remaining items
             for (const item of itemsToKeep) {
-                await fetch('/api/cart/guest', {
+                await fetch(`/api/cart/${userId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ product_id: String(item.id), quantity: item.quantity }),
@@ -108,7 +110,7 @@ export const CartProvider = ({ children }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: 'guest',
+                    userId: userId,
                     cartItems: checkoutItems
                 }),
             });
@@ -117,7 +119,7 @@ export const CartProvider = ({ children }) => {
                 // Store the checkout response with transaction details
                 setCheckoutResponse(data);
                 // Clear cart after successful checkout
-                await fetch('/api/cart/guest', { method: 'DELETE' });
+                await fetch(`/api/cart/${userId}`, { method: 'DELETE' });
                 setCartItems([]);
                 setIsOpen(false);
                 return true;

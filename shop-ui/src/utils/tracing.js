@@ -1,36 +1,46 @@
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { WebTracerProvider, StackContextManager } from '@opentelemetry/sdk-trace-web';
 import { SimpleSpanProcessor, ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { ZoneContextManager } from '@opentelemetry/context-zone';
 
-const provider = new WebTracerProvider();
+let tracer;
 
-const defaultOtelEndpoint = 'http://localhost:4318/v1/traces';
-const exporter = new OTLPTraceExporter({
-    url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT || defaultOtelEndpoint,
-});
+try {
+    const provider = new WebTracerProvider();
 
-provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    const defaultOtelEndpoint = 'http://localhost:4318/v1/traces';
+    const otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT || defaultOtelEndpoint;
+    const exporter = new OTLPTraceExporter({ url: otelEndpoint });
 
-// For development, also log to console
-if (import.meta.env.DEV) {
-    provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+
+    // For development, also log to console
+    if (import.meta.env.DEV) {
+        provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+    }
+
+    provider.register({
+        contextManager: new StackContextManager(),
+    });
+
+    registerInstrumentations({
+        instrumentations: [
+            new FetchInstrumentation({
+                indent: 2,
+                propagateTraceHeaderCorsUrls: /.*/,
+                clearTimingResources: true,
+            }),
+        ],
+    });
+
+    tracer = provider.getTracer('shop-ui');
+} catch (error) {
+    console.warn('OpenTelemetry tracing initialization failed, continuing without tracing:', error);
+    tracer = {
+        startSpan: () => ({ end: () => {}, setStatus: () => {}, recordException: () => {} }),
+        startActiveSpan: (name, fn) => fn({ end: () => {}, setStatus: () => {}, recordException: () => {} }),
+    };
 }
 
-provider.register({
-    contextManager: new ZoneContextManager(),
-});
-
-registerInstrumentations({
-    instrumentations: [
-        new FetchInstrumentation({
-            indent: 2,
-            propagateTraceHeaderCorsUrls: /.*/, // Propagate trace headers to all URLs
-            clearTimingResources: true,
-        }),
-    ],
-});
-
-export const tracer = provider.getTracer('shop-ui');
+export { tracer };

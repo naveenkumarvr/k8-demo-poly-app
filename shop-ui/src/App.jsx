@@ -1,13 +1,16 @@
 import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
-import { ShoppingCart, Package } from 'lucide-react';
+import { ShoppingCart, Package, LogOut, UserCircle } from 'lucide-react';
 import Home from './pages/Home';
+import Login from './pages/Login';
 import CartOverlay from './components/CartOverlay';
 import CheckoutSuccessModal from './components/CheckoutSuccessModal';
 import { CartProvider, useCart } from './context/CartContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 function Layout({ children }) {
   const { cartItems, setIsOpen, checkoutResponse, setCheckoutResponse } = useCart();
+  const { userId, isGuest, logout } = useAuth();
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -19,18 +22,32 @@ function Layout({ children }) {
             <span className="font-bold text-xl tracking-tight">PolyShop</span>
           </Link>
 
-          <button
-            onClick={() => setIsOpen(true)}
-            className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Open cart"
-          >
-            <ShoppingCart className="w-6 h-6 text-gray-700" />
-            {itemCount > 0 && (
-              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ring-2 ring-white">
-                {itemCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
+              <UserCircle className="w-4 h-4" />
+              <span>{isGuest ? 'Guest' : userId}</span>
+            </div>
+            <button
+              onClick={() => setIsOpen(true)}
+              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="w-6 h-6 text-gray-700" />
+              {itemCount > 0 && (
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ring-2 ring-white">
+                  {itemCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={logout}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -53,7 +70,21 @@ function Layout({ children }) {
   );
 }
 
-function App() {
+function AppRoutes() {
+  const { isAuthenticated, loginAsGuest, loginAsUser } = useAuth();
+
+  const handleLogin = ({ type, username, password }) => {
+    if (type === 'guest') {
+      loginAsGuest();
+      return true;
+    }
+    return loginAsUser(username, password);
+  };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <CartProvider>
       <Layout>
@@ -62,6 +93,14 @@ function App() {
         </Routes>
       </Layout>
     </CartProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
 
