@@ -42,11 +42,6 @@ spring:
   h2:
     console:
       enabled: false
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
 
 # Spring Boot Actuator - Kubernetes Health Probes
 management:

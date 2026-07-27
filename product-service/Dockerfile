@@ -38,7 +38,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Use Google Distroless base image for minimal attack surface
 # This image contains only the application and its runtime dependencies
 # No shell, package manager, or other unnecessary tools
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:debug-nonroot
 
 # Set working directory
 WORKDIR /app
