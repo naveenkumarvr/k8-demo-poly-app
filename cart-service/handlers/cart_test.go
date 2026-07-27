@@ -36,13 +36,7 @@ func setupTest(t *testing.T) (*CartHandler, *miniredis.Miniredis, func()) {
 	// Create logger (use nop logger for tests to avoid output clutter)
 	logger := zap.NewNop()
 
-	// Create redis.Client wrapper
-	redisClient := &redis.Client{}
-	// Use reflection or direct assignment if Client struct is exported
-	// For simplicity, we'll create a new InitRedis that accepts a client
-	// But since we can't modify redis package in tests, we'll create wrapper
-
-	// Quick workaround: manually create what we need
+	// Verify miniredis is reachable before creating handler
 	ctx := context.Background()
 	err := rdb.Ping(ctx).Err()
 	require.NoError(t, err, "miniredis should be reachable")
@@ -101,6 +95,10 @@ func (c *testRedisClient) GetCart(ctx context.Context, userID string) ([]redis.C
 func (c *testRedisClient) ClearCart(ctx context.Context, userID string) error {
 	key := "cart:" + userID
 	return c.rdb.Del(ctx, key).Err()
+}
+
+func (c *testRedisClient) Publish(ctx context.Context, channel, message string) error {
+	return c.rdb.Publish(ctx, channel, message).Err()
 }
 
 func TestAddItem(t *testing.T) {

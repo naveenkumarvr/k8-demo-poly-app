@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import io.opentelemetry.api.trace.Span;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -211,16 +212,14 @@ public class CheckoutService {
     }
 
     /**
-     * Get current trace ID from OpenTelemetry context
-     * 
-     * In a real implementation, you would extract this from:
-     * io.opentelemetry.api.trace.Span.current().getSpanContext().getTraceId()
-     * 
-     * For simplicity, we return a placeholder
+     * Get current trace ID from OpenTelemetry context.
+     * When the OTel Java Agent is attached, this returns the real W3C trace ID.
      */
     private String getCurrentTraceId() {
-        // TODO: Extract actual trace ID from OTel context
-        // This requires adding opentelemetry-api dependency
+        Span currentSpan = Span.current();
+        if (currentSpan != null && currentSpan.getSpanContext().isValid()) {
+            return currentSpan.getSpanContext().getTraceId();
+        }
         return "trace-" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

@@ -50,9 +50,8 @@ COPY --from=builder /build/cart-service /app/cart-service
 # Copy CA certificates for HTTPS connections
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Create log directory for sidecar pattern
-# Note: In distroless, we'll use a volume mount instead since we can't use mkdir
-# The directory will be created by the container runtime or init container
+# Logging: application writes structured JSON logs exclusively to stdout/stderr
+# (12-Factor App). No log directory is needed in the image.
 
 # Use non-root user (UID 65532 is 'nonroot' in distroless)
 # This enhances security by preventing privilege escalation

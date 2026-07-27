@@ -5,15 +5,18 @@ import (
 	"net/http"
 	"time"
 
-	"cart-service/redis"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
+// redisPinger is the minimal Redis interface required by health checks
+type redisPinger interface {
+	Ping(ctx context.Context) error
+}
+
 // HealthHandler holds dependencies for health check handlers
 type HealthHandler struct {
-	redisClient *redis.Client
+	redisClient redisPinger
 	logger      *zap.Logger
 	podName     string
 	nodeName    string
@@ -29,7 +32,7 @@ type HealthResponse struct {
 }
 
 // NewHealthHandler creates a new health handler
-func NewHealthHandler(redisClient *redis.Client, logger *zap.Logger, podName, nodeName string) *HealthHandler {
+func NewHealthHandler(redisClient redisPinger, logger *zap.Logger, podName, nodeName string) *HealthHandler {
 	return &HealthHandler{
 		redisClient: redisClient,
 		logger:      logger,
@@ -72,5 +75,43 @@ func (h *HealthHandler) Healthz(c *gin.Context) {
 		PodName:  h.podName,
 		NodeName: h.nodeName,
 		Redis:    redisStatus,
+	})
+}
+
+// Ready handles GET /ready
+// Kubernetes readiness probe: returns 200 only when Redis is reachable
+func (h *HealthHandler) Ready(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
+	if err := h.redisClient.Ping(ctx); err != nil {
+		h.logger.Warn("Readiness probe failed: Redis unreachable", zap.Error(err))
+		c.JSON(http.StatusServiceUnavailable, HealthResponse{
+			Status:   "not_ready",
+			Service:  "cart-service",
+			PodName:  h.podName,
+			NodeName: h.nodeName,
+			Redis:    "unhealthy",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, HealthResponse{
+		Status:   "ready",
+		Service:  "cart-service",
+		PodName:  h.podName,
+		NodeName: h.nodeName,
+		Redis:    "healthy",
+	})
+}
+
+// Live handles GET /live
+// Kubernetes liveness probe: returns 200 if the process is alive
+func (h *HealthHandler) Live(c *gin.Context) {
+	c.JSON(http.StatusOK, HealthResponse{
+		Status:   "alive",
+		Service:  "cart-service",
+		PodName:  h.podName,
+		NodeName: h.nodeName,
 	})
 }

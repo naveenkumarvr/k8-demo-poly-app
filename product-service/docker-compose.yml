@@ -6,9 +6,9 @@ services:
     image: postgres:16-alpine
     container_name: product-postgres
     environment:
-      POSTGRES_DB: products
-      POSTGRES_USER: productuser
-      POSTGRES_PASSWORD: productpass
+      POSTGRES_DB: ${POSTGRES_DB:-products}
+      POSTGRES_USER: ${POSTGRES_USER:-productuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-productpass}
     ports:
       - "5432:5432"
     volumes:
@@ -54,7 +54,7 @@ services:
 
   # OpenTelemetry Collector with Jaeger for trace visualization
   otel-collector:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.50
     container_name: product-otel-collector
     ports:
       - "16687:16686" # Jaeger UI on different port to avoid conflict with cart-service

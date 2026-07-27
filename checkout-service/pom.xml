@@ -72,6 +72,19 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Structured JSON logging to stdout (12-Factor App) -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
+        </dependency>
+
+        <!-- OpenTelemetry API for manual trace ID extraction -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+
         <!-- RestTemplate is included in spring-boot-starter-web -->
         <!-- OpenTelemetry Java Agent will auto-instrument it -->
     </dependencies>

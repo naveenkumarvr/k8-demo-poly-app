@@ -33,7 +33,7 @@ func main() {
 	nodeName := getEnv("NODE_NAME", "local-dev")
 
 	// Initialize logger first so we can use it for subsequent initialization
-	// This creates structured JSON logs to stdout and /var/log/app/cart-service.log
+	// This creates structured JSON logs exclusively to stdout (12-Factor App)
 	zapLogger, err := logger.InitLogger(serviceName, podName, nodeName, environment)
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
@@ -100,7 +100,10 @@ func main() {
 	// This must come before logging middleware to ensure trace_id is available in logs
 	router.Use(middleware.TracingMiddleware(serviceName))
 
-	// 3. Zap logging middleware - logs all requests with trace_id correlation
+	// 3. Prometheus RED metrics middleware (exposes /metrics for scraping)
+	router.Use(middleware.PrometheusMiddleware())
+
+	// 4. Zap logging middleware - logs all requests with trace_id correlation
 	router.Use(middleware.ZapMiddleware(zapLogger))
 
 	// Initialize handlers with dependencies
@@ -117,8 +120,13 @@ func main() {
 		v1.DELETE("/cart/:user_id", cartHandler.DeleteCart)
 	}
 
-	// Health check endpoint for Kubernetes liveness/readiness probes
+	// Health check endpoints for Kubernetes liveness/readiness probes
 	router.GET("/healthz", healthHandler.Healthz)
+	router.GET("/ready", healthHandler.Ready)
+	router.GET("/live", healthHandler.Live)
+
+	// Prometheus metrics endpoint
+	router.GET("/metrics", middleware.PrometheusHandler())
 
 	// Stress test endpoint for HPA testing and performance profiling
 	router.POST("/stress", stressHandler.StressTest)

@@ -16,7 +16,7 @@ func TestHealthz(t *testing.T) {
 
 	t.Run("should return 200 OK", func(t *testing.T) {
 		router := gin.New()
-		router.GET("/healthz", Healthz)
+		router.GET("/healthz", Healthz(nil))
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/healthz", nil)
 
@@ -27,7 +27,7 @@ func TestHealthz(t *testing.T) {
 
 	t.Run("should return valid JSON", func(t *testing.T) {
 		router := gin.New()
-		router.GET("/healthz", Healthz)
+		router.GET("/healthz", Healthz(nil))
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/healthz", nil)
 
@@ -37,13 +37,13 @@ func TestHealthz(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		
-		assert.Equal(t, "ok", response.Status)
+		assert.Equal(t, "healthy", response.Status)
 		assert.Equal(t, "product-service", response.Service)
 	})
 
 	t.Run("should have correct content type", func(t *testing.T) {
 		router := gin.New()
-		router.GET("/healthz", Healthz)
+		router.GET("/healthz", Healthz(nil))
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/healthz", nil)
 
@@ -148,7 +148,7 @@ func TestAllHealthEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	
 	router := gin.New()
-	router.GET("/healthz", Healthz)
+	router.GET("/healthz", Healthz(nil))
 	router.GET("/ready", Ready)
 	router.GET("/live", Live)
 
@@ -156,7 +156,7 @@ func TestAllHealthEndpoints(t *testing.T) {
 		path           string
 		expectedStatus string
 	}{
-		{"/healthz", "ok"},
+		{"/healthz", "healthy"},
 		{"/ready", "ready"},
 		{"/live", "alive"},
 	}

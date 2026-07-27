@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -42,11 +43,13 @@ func DefaultRetryConfig() RetryConfig {
 // Connection is verified by pinging Redis with retry logic
 func InitRedis(ctx context.Context, addr string, logger *zap.Logger) (*Client, error) {
 	// Create Redis client with connection pool settings
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:            addr,
-		Password:        "", // No password for local development
-		DB:              0,  // Use default DB
-		MaxRetries:      3,  // Automatic retry for failed commands
+		Password:        redisPassword, // Loaded from REDIS_PASSWORD env var (empty for local dev)
+		DB:              0,             // Use default DB
+		MaxRetries:      3,             // Automatic retry for failed commands
 		DialTimeout:     5 * time.Second,
 		ReadTimeout:     3 * time.Second,
 		WriteTimeout:    3 * time.Second,
@@ -145,6 +148,12 @@ func (c *Client) GetClient() *redis.Client {
 // This is used by health check endpoints
 func (c *Client) Ping(ctx context.Context) error {
 	return c.rdb.Ping(ctx).Err()
+}
+
+// Publish emits a message to a Redis Pub/Sub channel.
+// This is used for event-driven async processing (e.g., cart updated events).
+func (c *Client) Publish(ctx context.Context, channel, message string) error {
+	return c.rdb.Publish(ctx, channel, message).Err()
 }
 
 // Close closes the Redis connection

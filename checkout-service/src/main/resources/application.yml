@@ -9,28 +9,44 @@ spring:
   application:
     name: checkout-service
   
-  # H2 In-Memory Database Configuration
+  # H2 In-Memory Database Configuration (local/demo only)
+  # For production, replace with a real database (PostgreSQL) and mount credentials via env/secret
   datasource:
-    url: jdbc:h2:mem:checkoutdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
+    url: ${DB_URL:jdbc:h2:mem:checkoutdb}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
   
   # JPA/Hibernate Configuration
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
     hibernate:
-      ddl-auto: create-drop # Auto-create schema on startup
+      ddl-auto: ${DB_DDL_AUTO:create-drop}
     show-sql: false
     properties:
       hibernate:
         format_sql: true
   
-  # H2 Console (for debugging, disable in production)
+  # H2 Console (for debugging only, disabled in production via profile)
   h2:
     console:
-      enabled: true
+      enabled: ${H2_CONSOLE_ENABLED:true}
       path: /h2-console
+
+---
+# Production profile: disable H2 console and restrict actuator exposure
+spring:
+  config:
+    activate:
+      on-profile: prod
+  h2:
+    console:
+      enabled: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
 
 # Spring Boot Actuator - Kubernetes Health Probes
 management:
@@ -53,14 +69,12 @@ management:
       enabled: true
 
 # Logging Configuration
-# Logs will show OTel trace IDs for correlation
+# Structured JSON logging is configured in logback-spring.xml (stdout only, 12-Factor App)
 logging:
   level:
     root: INFO
     com.polyshop.checkout: DEBUG
     org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
 # Application Configuration
 checkout:

@@ -1,17 +1,40 @@
-# Ignore build artifacts
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+WALKTHROUGH.md
+walkthrough.md
+*.md
+
+# Docker / Compose (not needed in build context)
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.override.yml
+
+# Environment / Secrets
+.env
+.env.*
+!*.example
+*.pem
+*.key
+*.crt
+
+# Build artifacts
 product-service
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Output of the go coverage tool
 *.out
+coverage.out
 coverage.html
+bin/
+dist/
 
 # Dependency directories
 vendor/
@@ -19,16 +42,16 @@ vendor/
 # Go workspace file
 go.work
 
-# IDE specific files
+# Tests and test scripts
+*_test.go
+tests/
+scripts/
+
+# IDE / OS specific files
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# OS specific files
 .DS_Store
 Thumbs.db
-
-# Environment files
-.env

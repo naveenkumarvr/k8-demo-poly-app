@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"cart-service/redis"
@@ -31,14 +33,22 @@ type CartResponse struct {
 	TotalItems int        `json:"total_items"`
 }
 
+// cartRedisClient is the minimal Redis interface required by cart handlers
+type cartRedisClient interface {
+	AddItem(ctx context.Context, userID, productID string, quantity int) error
+	GetCart(ctx context.Context, userID string) ([]redis.CartItem, error)
+	ClearCart(ctx context.Context, userID string) error
+	Publish(ctx context.Context, channel, message string) error
+}
+
 // CartHandler holds dependencies for cart handlers
 type CartHandler struct {
-	redisClient *redis.Client
+	redisClient cartRedisClient
 	logger      *zap.Logger
 }
 
 // NewCartHandler creates a new cart handler
-func NewCartHandler(redisClient *redis.Client, logger *zap.Logger) *CartHandler {
+func NewCartHandler(redisClient cartRedisClient, logger *zap.Logger) *CartHandler {
 	return &CartHandler{
 		redisClient: redisClient,
 		logger:      logger,
@@ -130,6 +140,12 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 
 	span.SetStatus(codes.Ok, "Item added successfully")
 	span.SetAttributes(attribute.Int("total_items", len(responseItems)))
+
+	// Publish event for async background processing (e.g., notifications, analytics)
+	eventPayload := fmt.Sprintf(`{"event":"cart.updated","user_id":"%s","total_items":%d}`, userID, len(responseItems))
+	if err := h.redisClient.Publish(ctx, "cart-events", eventPayload); err != nil {
+		h.logger.Warn("Failed to publish cart.updated event", zap.Error(err))
+	}
 
 	c.JSON(http.StatusOK, response)
 }
@@ -223,6 +239,12 @@ func (h *CartHandler) DeleteCart(c *gin.Context) {
 	}
 
 	span.SetStatus(codes.Ok, "Cart cleared successfully")
+
+	// Publish event for async background processing
+	eventPayload := fmt.Sprintf(`{"event":"cart.cleared","user_id":"%s"}`, userID)
+	if err := h.redisClient.Publish(ctx, "cart-events", eventPayload); err != nil {
+		h.logger.Warn("Failed to publish cart.cleared event", zap.Error(err))
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Cart cleared successfully",

@@ -4,6 +4,7 @@ import com.polyshop.checkout.service.CurrencyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,7 +59,7 @@ public class CurrencyController {
             BigDecimal convertedAmount = currencyService.convert(amount, from, to);
 
             // Calculate exchange rate
-            BigDecimal rate = convertedAmount.divide(amount, 4, BigDecimal.ROUND_HALF_UP);
+            BigDecimal rate = convertedAmount.divide(amount, 4, RoundingMode.HALF_UP);
 
             Map<String, Object> response = new HashMap<>();
             response.put("original_amount", amount);

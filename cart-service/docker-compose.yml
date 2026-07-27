@@ -49,26 +49,9 @@ services:
     networks:
       - cart-network
 
-  # Log shipper sidecar - simulates shipping logs to centralized logging
-  log-shipper:
-    image: alpine:latest
-    container_name: cart-log-shipper
-    command: >
-      sh -c "echo 'Waiting for log file...' &&
-             while [ ! -f /var/log/app/cart-service.log ]; do sleep 1; done &&
-             echo 'Log file found, starting to tail...' &&
-             tail -F /var/log/app/cart-service.log"
-    volumes:
-      # Read-only access to the same log directory
-      - cart-logs:/var/log/app:ro
-    depends_on:
-      - cart-service
-    networks:
-      - cart-network
-
   # OpenTelemetry Collector with Jaeger for trace visualization
   otel-collector:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.50
     container_name: cart-otel-collector
     ports:
       - "16686:16686" # Jaeger UI
@@ -80,9 +63,6 @@ services:
       - cart-network
 
 volumes:
-  # Shared volume for logs (sidecar pattern)
-  cart-logs:
-    driver: local
   # Persistent volume for Redis data
   redis-data:
     driver: local

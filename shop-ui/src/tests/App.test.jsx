@@ -13,8 +13,8 @@ const mockProduct = {
     id: '1',
     name: 'Test Product',
     description: 'A great product',
-    price_usd: { units: 10, nanos: 0 },
-    picture: '/test.jpg'
+    price: 10.0,
+    image_url: '/test.jpg'
 };
 
 describe('App Integration', () => {
@@ -27,14 +27,14 @@ describe('App Integration', () => {
             if (url === '/api/products') {
                 return Promise.resolve({
                     ok: true,
-                    json: async () => ({ products: [mockProduct] }),
+                    json: async () => [mockProduct],
                 });
             }
             if (url === '/api/ads') {
                 return Promise.resolve({ ok: true, json: async () => ({ ads: [] }) });
             }
-            if (url === '/api/cart') {
-                return Promise.resolve({ ok: true, json: async () => [] });
+            if (url === '/api/cart/guest') {
+                return Promise.resolve({ ok: true, json: async () => ({ user_id: 'guest', items: [], total_items: 0 }) });
             }
             return Promise.resolve({ ok: false });
         });
@@ -57,17 +57,17 @@ describe('App Integration', () => {
     it('adds item to cart and checks out', async () => {
         // Setup initial fetches
         fetch.mockImplementation((url, options) => {
-            if (url === '/api/products') return Promise.resolve({ ok: true, json: async () => ({ products: [mockProduct] }) });
+            if (url === '/api/products') return Promise.resolve({ ok: true, json: async () => [mockProduct] });
             if (url === '/api/ads') return Promise.resolve({ ok: true, json: async () => ({ ads: [] }) });
-            if (url === '/api/cart') {
+            if (url === '/api/cart/guest') {
                 // Return empty initially, then with item after add
-                return Promise.resolve({ ok: true, json: async () => [] });
+                return Promise.resolve({ ok: true, json: async () => ({ user_id: 'guest', items: [], total_items: 0 }) });
             }
-            if (url === '/api/cart' && options?.method === 'POST') {
-                return Promise.resolve({ ok: true });
+            if (url === '/api/cart/guest' && options?.method === 'POST') {
+                return Promise.resolve({ ok: true, json: async () => ({ user_id: 'guest', items: [{ product_id: '1', quantity: 1 }], total_items: 1 }) });
             }
             if (url === '/api/checkout') {
-                return Promise.resolve({ ok: true });
+                return Promise.resolve({ ok: true, json: async () => ({ transaction_id: 'txn-test', status: 'SUCCESS' }) });
             }
             return Promise.resolve({ ok: false });
         });
@@ -86,7 +86,7 @@ describe('App Integration', () => {
         fireEvent.click(addBtn);
 
         // Expect fetch POST call
-        expect(fetch).toHaveBeenCalledWith('/api/cart', expect.objectContaining({ method: 'POST' }));
+        expect(fetch).toHaveBeenCalledWith('/api/cart/guest', expect.objectContaining({ method: 'POST' }));
 
         // Simulate cart update (in real app, useCart refetches, here we mock addToCart side effects or assume logic works)
         // Since we mocked fetch, the component calls fetchCart(), which calls /api/cart again.

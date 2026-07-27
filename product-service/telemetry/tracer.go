@@ -3,7 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -80,8 +80,11 @@ func InitTracer(config TracerConfig) (func(context.Context) error, error) {
 		propagation.Baggage{},      // W3C Baggage
 	))
 
-	log.Printf("OpenTelemetry tracer initialized: service=%s, version=%s, environment=%s, endpoint=%s",
-		config.ServiceName, config.ServiceVersion, config.Environment, config.OTLPEndpoint)
+	slog.Info("OpenTelemetry tracer initialized",
+		slog.String("service", config.ServiceName),
+		slog.String("version", config.ServiceVersion),
+		slog.String("environment", config.Environment),
+		slog.String("endpoint", config.OTLPEndpoint))
 
 	// Return shutdown function
 	// This should be called on application shutdown to flush remaining spans

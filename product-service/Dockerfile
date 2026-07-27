@@ -15,11 +15,10 @@ WORKDIR /build
 
 # Copy go.mod and go.sum first for better layer caching
 # This allows Docker to cache dependencies if they haven't changed
-COPY go.mod ./
+COPY go.mod go.sum ./
 
-# Download dependencies and generate go.sum if it doesn't exist
-# This layer is cached unless go.mod changes
-RUN go mod download && go mod tidy
+# Download dependencies (layer is cached unless go.mod or go.sum changes)
+RUN go mod download
 
 # Copy the entire source code
 COPY . .
@@ -55,7 +54,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 USER 65532:65532
 
 # Expose the application port
-EXPOSE 8080
+EXPOSE 8090
 
 # Set the entrypoint
 # Note: Distroless images don't have a shell, so we use the exec form

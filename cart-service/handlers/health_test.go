@@ -73,6 +73,10 @@ func (c *testHealthRedisClient) ClearCart(ctx context.Context, userID string) er
 	return nil
 }
 
+func (c *testHealthRedisClient) Publish(ctx context.Context, channel, message string) error {
+	return nil
+}
+
 func TestHealthz(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -128,4 +132,74 @@ func TestHealthz(t *testing.T) {
 		assert.Equal(t, "unhealthy", response.Status)
 		assert.Equal(t, "unhealthy", response.Redis)
 	})
+}
+
+func TestReady(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("should return ready when Redis is reachable", func(t *testing.T) {
+		handler, _, cleanup := setupHealthTest(t)
+		defer cleanup()
+
+		router := gin.New()
+		router.GET("/ready", handler.Ready)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/ready", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response HealthResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "ready", response.Status)
+		assert.Equal(t, "healthy", response.Redis)
+	})
+
+	t.Run("should return not_ready when Redis is down", func(t *testing.T) {
+		handler, mr, cleanup := setupHealthTest(t)
+		defer cleanup()
+
+		mr.Close()
+
+		router := gin.New()
+		router.GET("/ready", handler.Ready)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/ready", nil)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		req = req.WithContext(ctx)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+
+		var response HealthResponse
+		json.Unmarshal(w.Body.Bytes(), &response)
+		assert.Equal(t, "not_ready", response.Status)
+		assert.Equal(t, "unhealthy", response.Redis)
+	})
+}
+
+func TestLive(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler, _, cleanup := setupHealthTest(t)
+	defer cleanup()
+
+	router := gin.New()
+	router.GET("/live", handler.Live)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/live", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response HealthResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "alive", response.Status)
+	assert.Equal(t, "cart-service", response.Service)
 }

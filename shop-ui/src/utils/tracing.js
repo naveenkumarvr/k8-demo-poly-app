@@ -7,8 +7,9 @@ import { ZoneContextManager } from '@opentelemetry/context-zone';
 
 const provider = new WebTracerProvider();
 
+const defaultOtelEndpoint = 'http://localhost:4318/v1/traces';
 const exporter = new OTLPTraceExporter({
-    url: 'http://localhost:4318/v1/traces', // Default Jaeger/OTLP endpoint
+    url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT || defaultOtelEndpoint,
 });
 
 provider.addSpanProcessor(new BatchSpanProcessor(exporter));
