@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: poly-shop-product-service
+  name: poly-shop-product-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poly-shop-product-service
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: poly-shop-product-service
+    spec:
+      containers:
+      - image: naveenvr0792/poly_app-product_svc:v1
+        name: poly-shop-product-service
+        ports:
+        - containerPort: 8090
+        resources: {}
+        envFrom:
+        - configMapRef:
+            name: product-svc-config
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: product-svc-postgres
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: product-svc-postgres
+              key: DB_PASSWORD
+        - name: DATABASE_URL
+          value: "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8090
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8090
+          initialDelaySeconds: 15
+          periodSeconds: 10
+status: {}

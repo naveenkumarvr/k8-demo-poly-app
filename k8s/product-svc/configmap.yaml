@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  DB_HOST: "postgres-postgresql.postgres.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "products"
+  DB_SSLMODE: "disable"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "<Will Update>"
+  SERVICE_NAME: "product-service"
+  SERVICE_VERSION: "v1"
+  ENVIRONMENT: "production"
+  PORT: "8090"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: product-svc-config
+  namespace: demo
