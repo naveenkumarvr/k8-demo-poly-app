@@ -10,12 +10,12 @@ primary:
     size: 2Gi
     storageClass: "standard"
 
-  initdb:
-    scripts:
-      01-schema.sql: |
-        -- contents of schema.sql
-      02-seed.sql: |
-        -- contents of seed.sql
+  # initdb:
+  #   scripts:
+  #     01-schema.sql: |
+  #       -- contents of schema.sql
+  #     02-seed.sql: |
+  #       -- contents of seed.sql
 
 # helm repo add bitnami https://charts.bitnami.com/bitnami
 # helm upgrade --install postgres bitnami/postgresql \
