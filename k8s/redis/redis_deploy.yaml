@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: polyapp-redis
+  name: polyapp-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: polyapp-redis
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: polyapp-redis
+    spec:
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+      containers:
+      - image: redis:7-alpine
+        name: polyapp-redis
+        command: ["redis-server"]
+        args: ["--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+        resources: {}
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        # LIVENESS PROBE: Restarts Redis if it stops responding to PING
+        livenessProbe:
+          exec:
+            command:
+            - "redis-cli"
+            - "ping"
+          initialDelaySeconds: 15  # Wait 15s after container start before first check
+          periodSeconds: 10        # Run check every 10 seconds
+          timeoutSeconds: 5        # Command fails if it takes longer than 5s
+          failureThreshold: 3      # Restart container after 3 consecutive failures
+    
+        # READINESS PROBE: Don't route traffic until Redis responds
+        readinessProbe:
+          exec:
+            command:
+              - redis-cli
+              - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+status: {}
