@@ -1,0 +1,22 @@
+# postgres-values.yaml
+auth:
+  database: products
+  username: productuser
+  password: productpass
+
+primary:
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: "standard"
+
+  initdb:
+    scripts:
+      01-schema.sql: |
+        -- contents of schema.sql
+      02-seed.sql: |
+        -- contents of seed.sql
+
+# helm repo add bitnami https://charts.bitnami.com/bitnami
+# helm upgrade --install postgres bitnami/postgresql \
+#   -f values.yaml
