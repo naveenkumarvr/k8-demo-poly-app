@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: poly-shop-cart-ms
+  name: poly-shop-cart-ms-svc
+  namespace: demo
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: poly-shop-cart-ms
+status:
+  loadBalancer: {}

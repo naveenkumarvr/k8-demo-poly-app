@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: poly-shop-cart-ms
+  name: poly-shop-cart-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poly-shop-cart-ms
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: poly-shop-cart-ms
+    spec:
+      containers:
+      - image: naveenvr0792/poly_app-cart_svc:v1
+        name: poly-shop-cart-ms
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "200m"
+        envFrom:
+        - configMapRef:
+            name: cart-ms-cm
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+        
+status: {}

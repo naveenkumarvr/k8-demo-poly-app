@@ -3,39 +3,39 @@ kind: Deployment
 metadata:
   creationTimestamp: null
   labels:
-    app: poly-shop-product-service
-  name: poly-shop-product-service
+    app: poly-shop-product-ms
+  name: poly-shop-product-ms
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: poly-shop-product-service
+      app: poly-shop-product-ms
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
-        app: poly-shop-product-service
+        app: poly-shop-product-ms
     spec:
       containers:
       - image: naveenvr0792/poly_app-product_svc:v1
-        name: poly-shop-product-service
+        name: poly-shop-product-ms
         ports:
         - containerPort: 8090
         resources: {}
         envFrom:
         - configMapRef:
-            name: product-svc-config
+            name: product-ms-cm
         env:
         - name: DB_USER
           valueFrom:
             secretKeyRef:
-              name: product-svc-postgres
+              name: product-ms-secret
               key: DB_USER
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: product-svc-postgres
+              name: product-ms-secret
               key: DB_PASSWORD
         - name: DATABASE_URL
           value: "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)"

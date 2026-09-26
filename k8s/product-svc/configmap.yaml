@@ -12,5 +12,5 @@ data:
 kind: ConfigMap
 metadata:
   creationTimestamp: null
-  name: product-svc-config
+  name: product-ms-cm
   namespace: demo

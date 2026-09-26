@@ -3,14 +3,14 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
-    app: poly-shop-product-service
-  name: poly-shop-product-service
+    app: poly-shop-product-ms-svc
+  name: poly-shop-product-ms
 spec:
   ports:
   - port: 8090
     protocol: TCP
     targetPort: 8090
   selector:
-    app: poly-shop-product-service
+    app: poly-shop-product-ms
 status:
   loadBalancer: {}
