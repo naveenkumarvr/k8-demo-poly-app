@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  COLLECTOR_OTLP_ENABLED: "true"
+  COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+kind: ConfigMap
+metadata:
+  name: jaeger-cm
+  namespace: observability

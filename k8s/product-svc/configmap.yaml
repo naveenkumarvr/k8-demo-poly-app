@@ -4,7 +4,7 @@ data:
   DB_PORT: "5432"
   DB_NAME: "products"
   DB_SSLMODE: "disable"
-  OTEL_EXPORTER_OTLP_ENDPOINT: "<Will Update>"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "jaeger-tracing-svc.observability.svc.cluster.local:4317"
   SERVICE_NAME: "product-service"
   SERVICE_VERSION: "v1"
   ENVIRONMENT: "production"
