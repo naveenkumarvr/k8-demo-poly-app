@@ -1,0 +1,64 @@
+apiVersion: v1
+data:
+  01-schema.sql: "-- Products table schema for product catalog\r\n-- This table stores
+    the core product information for the e-commerce platform\r\n\r\nCREATE TABLE IF
+    NOT EXISTS products (\r\n    id SERIAL PRIMARY KEY,\r\n    name VARCHAR(255) NOT
+    NULL UNIQUE,\r\n    description TEXT,\r\n    price DECIMAL(10, 2) NOT NULL CHECK
+    (price >= 0),\r\n    stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),\r\n
+    \   category VARCHAR(100),\r\n    image_url TEXT,\r\n    created_at TIMESTAMP
+    WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\r\n    updated_at TIMESTAMP WITH TIME
+    ZONE DEFAULT CURRENT_TIMESTAMP\r\n);\r\n\r\n-- Indexes for common queries\r\nCREATE
+    INDEX IF NOT EXISTS idx_products_category ON products(category);\r\nCREATE INDEX
+    IF NOT EXISTS idx_products_name ON products(name);\r\nCREATE INDEX IF NOT EXISTS
+    idx_products_price ON products(price);\r\n\r\n-- Trigger to automatically update
+    updated_at timestamp\r\nCREATE OR REPLACE FUNCTION update_updated_at_column()\r\nRETURNS
+    TRIGGER AS $$\r\nBEGIN\r\n    NEW.updated_at = CURRENT_TIMESTAMP;\r\n    RETURN
+    NEW;\r\nEND;\r\n$$ language 'plpgsql';\r\n\r\nCREATE OR REPLACE TRIGGER update_products_updated_at
+    \r\n    BEFORE UPDATE ON products\r\n    FOR EACH ROW\r\n    EXECUTE FUNCTION
+    update_updated_at_column();\r\n"
+  02-seed.sql: "-- Sample product data for product catalog\r\n-- This file seeds the
+    database with initial product inventory\r\n\r\n-- Electronics\r\nINSERT INTO products
+    (name, description, price, stock, category, image_url) VALUES\r\n('MacBook Pro
+    16\"', 'Apple M3 Max chip with 16-core CPU and 40-core GPU, 64GB unified memory,
+    1TB SSD storage', 3499.00, 25, 'Electronics', 'https://picsum.photos/seed/laptop1/400/300'),\r\n('Sony
+    WH-1000XM5 Headphones', 'Industry-leading noise canceling wireless headphones
+    with 30-hour battery life', 399.99, 50, 'Electronics', 'https://picsum.photos/seed/headphones1/400/300'),\r\n('iPhone
+    15 Pro Max', 'A17 Pro chip, titanium design, 6.7-inch Super Retina XDR display,
+    256GB', 1199.00, 100, 'Electronics', 'https://picsum.photos/seed/phone1/400/300'),\r\n('Samsung
+    65\" QLED TV', '4K Ultra HD Smart TV with Quantum Processor and HDR10+', 1299.99,
+    15, 'Electronics', 'https://picsum.photos/seed/tv1/400/300'),\r\n('Dell UltraSharp
+    Monitor', '27-inch 4K USB-C monitor with 99% sRGB color coverage', 549.00, 40,
+    'Electronics', 'https://picsum.photos/seed/monitor1/400/300')\r\nON CONFLICT (name)
+    DO NOTHING;\r\n\r\n-- Clothing\r\nINSERT INTO products (name, description, price,
+    stock, category, image_url) VALUES\r\n('Levi''s 501 Original Jeans', 'Classic
+    straight fit denim jeans with button fly, available in multiple washes', 69.99,
+    200, 'Clothing', 'https://picsum.photos/seed/jeans1/400/300'),\r\n('Nike Air Max
+    Sneakers', 'Comfortable running shoes with visible Air cushioning and breathable
+    mesh', 129.99, 150, 'Clothing', 'https://picsum.photos/seed/shoes1/400/300'),\r\n('Patagonia
+    Down Jacket', 'Lightweight insulated jacket with 800-fill-power down, water-resistant
+    shell', 229.00, 75, 'Clothing', 'https://picsum.photos/seed/jacket1/400/300'),\r\n('Ralph
+    Lauren Oxford Shirt', 'Classic fit button-down shirt in 100% cotton, available
+    in multiple colors', 89.50, 120, 'Clothing', 'https://picsum.photos/seed/shirt1/400/300')\r\nON
+    CONFLICT (name) DO NOTHING;\r\n\r\n-- Books\r\nINSERT INTO products (name, description,
+    price, stock, category, image_url) VALUES\r\n('The Pragmatic Programmer', 'Your
+    journey to mastery, 20th Anniversary Edition by David Thomas and Andrew Hunt',
+    49.99, 80, 'Books', 'https://picsum.photos/seed/book1/400/300'),\r\n('Atomic Habits',
+    'An easy and proven way to build good habits and break bad ones by James Clear',
+    27.00, 150, 'Books', 'https://picsum.photos/seed/book2/400/300'),\r\n('The Art
+    of War', 'Ancient Chinese military treatise by Sun Tzu, deluxe hardcover edition',
+    19.99, 200, 'Books', 'https://picsum.photos/seed/book3/400/300')\r\nON CONFLICT
+    (name) DO NOTHING;\r\n\r\n-- Home & Garden\r\nINSERT INTO products (name, description,
+    price, stock, category, image_url) VALUES\r\n('Ergonomic Office Chair', 'Adjustable
+    lumbar support, breathable mesh back, 360-degree swivel, up to 300 lbs', 299.99,
+    45, 'Home & Garden', 'https://picsum.photos/seed/chair1/400/300'),\r\n('Dyson
+    V15 Vacuum', 'Cordless stick vacuum with laser detection and LCD screen showing
+    particle count', 649.99, 30, 'Home & Garden', 'https://picsum.photos/seed/vacuum1/400/300'),\r\n('KitchenAid
+    Stand Mixer', '5-quart tilt-head stand mixer with 10 speeds and stainless steel
+    bowl', 379.99, 60, 'Home & Garden', 'https://picsum.photos/seed/mixer1/400/300'),\r\n('Weber
+    Gas Grill', '3-burner propane gas grill with 529 sq. in. cooking area and side
+    burner', 499.00, 20, 'Home & Garden', 'https://picsum.photos/seed/grill1/400/300')\r\nON
+    CONFLICT (name) DO NOTHING;\r\n"
+kind: ConfigMap
+metadata:
+  name: product-db-init
+  namespace: demo
