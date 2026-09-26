@@ -1,5 +1,6 @@
 # postgres-values.yaml
 auth:
+  postgresPassword: adminpass
   database: products
   username: productuser
   password: productpass
@@ -11,10 +12,18 @@ primary:
     storageClass: "standard"
 
   initdb:
-    user: productuser
-    password: productpass
+    # Superuser is required to create the checkout role and database
+    user: postgres
+    password: adminpass
     scripts:
+      00-checkout-db.sql: |
+        CREATE ROLE checkoutuser LOGIN PASSWORD 'checkoutpass';
+        CREATE DATABASE checkout OWNER checkoutuser;
+
       01-schema.sql: |
+        -- Objects created below are owned by productuser, not postgres
+        SET ROLE productuser;
+
         -- Products table schema for product catalog
         -- This table stores the core product information for the e-commerce platform
 

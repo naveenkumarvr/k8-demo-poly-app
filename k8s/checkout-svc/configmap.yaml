@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger-tracing-svc.observability.svc.cluster.local:4317"
+  CART_SERVICE_URL: "http://poly-shop-cart-ms-svc.demo.svc.cluster.local:8080"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  OTEL_METRICS_EXPORTER: "none"
+  OTEL_LOGS_EXPORTER: "none"
+  OTEL_SERVICE_NAME: "checkout-service"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=poly-shop,service.version=1.0.0"
+  STARTUP_DELAY_SECONDS: "15"
+  JAVA_OPTS: "-Xms512m -Xmx768m"
+  DB_URL: "jdbc:postgresql://postgres-postgresql.postgres.svc.cluster.local:5432/checkout"
+  DB_DRIVER: "org.postgresql.Driver"
+  DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+  DB_DDL_AUTO: "update"
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: checkout-ms-cm
+  namespace: demo

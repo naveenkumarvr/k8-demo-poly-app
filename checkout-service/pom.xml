@@ -58,6 +58,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- PostgreSQL driver - persistent transaction logs on Kubernetes -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Lombok - Reduce boilerplate code -->
         <dependency>
             <groupId>org.projectlombok</groupId>

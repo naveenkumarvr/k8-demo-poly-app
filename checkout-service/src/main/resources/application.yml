@@ -33,16 +33,6 @@ spring:
       enabled: ${H2_CONSOLE_ENABLED:true}
       path: /h2-console
 
----
-# Production profile: disable H2 console and restrict actuator exposure
-spring:
-  config:
-    activate:
-      on-profile: prod
-  h2:
-    console:
-      enabled: false
-
 # Spring Boot Actuator - Kubernetes Health Probes
 management:
   endpoints:
@@ -93,3 +83,13 @@ currency:
     CAD_TO_USD: 0.74
     EUR_TO_USD: 1.09
     GBP_TO_USD: 1.27
+
+---
+# Production profile: disable H2 console
+spring:
+  config:
+    activate:
+      on-profile: prod
+  h2:
+    console:
+      enabled: false

@@ -8,6 +8,7 @@ Step-by-step commands to deploy PolyShop on a local kind cluster. Run all comman
 | Redis | `demo` |
 | Jaeger (all-in-one) | `observability` |
 | product-service | `demo` |
+| checkout-service | `demo` |
 
 ## 1. Create the cluster
 
@@ -26,7 +27,13 @@ kubectl create namespace observability
 
 ## 3. Install PostgreSQL
 
-Schema and seed data are defined in `primary.initdb.scripts` in [postgres/values.yaml](postgres/values.yaml). They run only once, when the data volume is empty.
+[postgres/values.yaml](postgres/values.yaml) sets up both databases through `primary.initdb.scripts`. The scripts run as the `postgres` superuser, and only once, when the data volume is empty:
+
+| Script | Creates |
+|--------|---------|
+| `00-checkout-db.sql` | `checkoutuser` role and `checkout` database (checkout-service creates its `transactions` table on startup) |
+| `01-schema.sql` | `products` table, owned by `productuser` |
+| `02-seed.sql` | 16 sample products |
 
 ```bash
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -39,11 +46,18 @@ helm upgrade --install postgres bitnami/postgresql -n postgres -f k8s/postgres/v
 kubectl wait -n postgres --for=condition=Ready pod/postgres-postgresql-0 --timeout=180s
 ```
 
-Verify the schema and seed data (expect owner `productuser` and 16 rows):
+Verify the products schema and seed data (expect owner `productuser` and 16 rows):
 
 ```bash
 kubectl exec -n postgres postgres-postgresql-0 -- env PGPASSWORD=productpass \
   psql -U productuser -d products -c "\dt" -c "select count(*) from products;"
+```
+
+Verify the checkout database exists and `checkoutuser` can log in:
+
+```bash
+kubectl exec -n postgres postgres-postgresql-0 -- env PGPASSWORD=checkoutpass \
+  psql -U checkoutuser -d checkout -c "select current_user, current_database();"
 ```
 
 ## 4. Deploy Redis
@@ -95,7 +109,7 @@ kubectl port-forward -n observability svc/jaeger-tracing-svc 16686:16686
 | 14268 | Jaeger Thrift HTTP collector |
 | 9411 | Zipkin-compatible endpoint |
 
-Set `OTEL_EXPORTER_OTLP_ENDPOINT` in each service ConfigMap to `jaeger-tracing-svc.observability.svc.cluster.local:4317` (host:port, no `http://`).
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` in each service ConfigMap to `jaeger-tracing-svc.observability.svc.cluster.local:4317`. Go services use host:port with no scheme. The Java agent in checkout-service needs the `http://` prefix and `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`.
 
 ## 6. Deploy product-service
 
@@ -127,6 +141,48 @@ curl http://localhost:8090/products
 
 Then open the Jaeger UI, select `product-service` in the **Service** dropdown, and click **Find Traces**.
 
+## 8. Deploy checkout-service
+
+Stores transactions in the `checkout` Postgres database and calls cart-service at `CART_SERVICE_URL`. Requires the `checkout` database created by the Postgres init scripts in step 3.
+
+Build and push the image after any code or `pom.xml` change:
+
+```bash
+docker build -t naveenvr0792/poly_app-checkout_svc:v1 checkout-service
+docker push naveenvr0792/poly_app-checkout_svc:v1
+# or, without a registry: kind load docker-image naveenvr0792/poly_app-checkout_svc:v1 --name k8s
+```
+
+Deploy:
+
+```bash
+kubectl apply -f k8s/checkout-svc/secrets.yaml
+kubectl apply -f k8s/checkout-svc/configmap.yaml
+kubectl apply -f k8s/checkout-svc/deploy.yaml
+kubectl apply -f k8s/checkout-svc/service.yaml
+
+kubectl rollout status -n demo deploy/poly-shop-checkout-ms --timeout=180s
+```
+
+The startup probe allows up to 150s for the 15s `STARTUP_DELAY_SECONDS` plus JVM boot.
+
+## 9. Test checkout-service
+
+```bash
+kubectl port-forward -n demo svc/poly-shop-checkout-ms-svc 8085:8085
+curl http://localhost:8085/actuator/health
+curl -X POST http://localhost:8085/checkout -H "Content-Type: application/json" -d '{"userId":"user123"}'
+```
+
+Verify transactions are persisted:
+
+```bash
+kubectl exec -n postgres postgres-postgresql-0 -- env PGPASSWORD=checkoutpass \
+  psql -U checkoutuser -d checkout -c "select transaction_id, user_id, status, created_at from transactions order by created_at desc limit 5;"
+```
+
+The rows survive `kubectl rollout restart -n demo deploy/poly-shop-checkout-ms`.
+
 ## Troubleshooting
 
 ```bash
@@ -143,6 +199,10 @@ kubectl exec -it -n demo deploy/polyapp-redis -- redis-cli
 
 # Jaeger logs (look for OTLP receiver start and errors)
 kubectl logs -n observability deploy/jaeger-tracing
+
+# checkout-service logs and probe events
+kubectl logs -n demo deploy/poly-shop-checkout-ms
+kubectl describe pod -n demo -l app=poly-shop-checkout-ms
 
 # Test DB connectivity from inside the demo namespace
 kubectl run pgtest -n demo --rm -it --image=postgres:16 -- \

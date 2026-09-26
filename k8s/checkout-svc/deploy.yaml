@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: poly-shop-checkout-ms
+  name: poly-shop-checkout-ms
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poly-shop-checkout-ms
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: poly-shop-checkout-ms
+    spec:
+      containers:
+      - image: naveenvr0792/poly_app-checkout_svc:v2
+        name: poly-shop-checkout-ms
+        ports:
+        - containerPort: 8085
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "500Mi"
+            cpu: "250m"
+        envFrom:
+        - configMapRef:
+            name: checkout-ms-cm
+        - secretRef:
+            name: checkout-svc-postgres
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        # Covers STARTUP_DELAY_SECONDS + JVM/Spring boot time (up to 150s)
+        startupProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8085
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8085
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8085
+          periodSeconds: 10
+status: {}
