@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: shop-ui-ms
+  name: shop-ui-ms-svc
+  namespace: demo
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: shop-ui-ms
+status:
+  loadBalancer: {}

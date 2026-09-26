@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-ui-ms-cm
+  namespace: demo
+data:
+  # Replaces the image's Docker Compose nginx.conf with Kubernetes service names
+  default.conf: |
+    server {
+        listen 8080;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api/products {
+            proxy_pass http://poly-shop-product-ms.demo.svc.cluster.local:8090/products;
+            proxy_set_header Host $host;
+        }
+
+        location /api/cart/ {
+            proxy_pass http://poly-shop-cart-ms-svc.demo.svc.cluster.local:8080/v1/cart/;
+            proxy_set_header Host $host;
+        }
+
+        location /api/checkout {
+            proxy_pass http://poly-shop-checkout-ms-svc.demo.svc.cluster.local:8085/checkout;
+            proxy_set_header Host $host;
+        }
+
+        location /api/ads {
+            default_type application/json;
+            return 200 '{"ads": []}';
+        }
+    }

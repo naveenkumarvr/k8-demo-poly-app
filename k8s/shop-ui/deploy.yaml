@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shop-ui-ms
+  name: shop-ui-ms
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-ui-ms
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: shop-ui-ms
+    spec:
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: shop-ui-ms-cm
+      containers:
+      - image: naveenvr0792/poly_app-shop_ui:v1
+        name: poly-app-shop-ui-ms
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "32Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 20
+status: {}

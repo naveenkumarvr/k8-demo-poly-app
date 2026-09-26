@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: notification-worker
+  name: notification-worker
+  namespace: demo
+spec:
+  # Redis Pub/Sub delivers every message to every subscriber; more replicas = duplicate processing
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-worker
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: notification-worker
+    spec:
+      containers:
+      - image: naveenvr0792/poly_app-notification_worker:v1
+        name: notification-worker
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+        envFrom:
+        - configMapRef:
+            name: notification-worker-cm
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        # No probes: no HTTP endpoint and distroless image has no shell for exec probes
+status: {}

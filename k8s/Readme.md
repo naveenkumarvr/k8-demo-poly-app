@@ -9,6 +9,7 @@ Step-by-step commands to deploy PolyShop on a local kind cluster. Run all comman
 | Jaeger (all-in-one) | `observability` |
 | product-service | `demo` |
 | checkout-service | `demo` |
+| notification-worker | `demo` |
 
 ## 1. Create the cluster
 
@@ -182,6 +183,34 @@ kubectl exec -n postgres postgres-postgresql-0 -- env PGPASSWORD=checkoutpass \
 ```
 
 The rows survive `kubectl rollout restart -n demo deploy/poly-shop-checkout-ms`.
+
+## 10. Deploy notification-worker
+
+Background worker that subscribes to the Redis Pub/Sub channel `cart-events` and logs each `cart.updated` / `cart.cleared` event published by cart-service. It has no Service or probes, because it exposes no HTTP endpoint and runs on a distroless image. Keep it at 1 replica, since each Pub/Sub subscriber receives every message.
+
+```bash
+docker build -t naveenvr0792/poly_app-notification_worker:v1 notification-worker
+docker push naveenvr0792/poly_app-notification_worker:v1
+
+kubectl apply -f k8s/notification-worker/configmap.yaml
+kubectl apply -f k8s/notification-worker/deploy.yaml
+kubectl rollout status -n demo deploy/notification-worker
+```
+
+Verify: add an item to the cart in the UI, then check that the worker logged the event:
+
+```bash
+kubectl logs -n demo deploy/notification-worker -f
+# {"msg":"Processed cart event asynchronously","event":"cart.updated","user_id":"user-1","total_items":1,...}
+```
+
+Or publish a test event directly:
+
+```bash
+kubectl exec -n demo deploy/polyapp-redis -- redis-cli PUBLISH cart-events '{"event":"cart.updated","user_id":"test","total_items":3}'
+```
+
+`PUBLISH` returns the number of subscribers that received the event. Expect `1`. `0` means the worker is not subscribed.
 
 ## Troubleshooting
 
