@@ -13,6 +13,8 @@ Step-by-step commands to deploy PolyShop on a local kind cluster. Run all comman
 
 ## 1. Create the cluster
 
+Requires kind v0.33.0+. [kind_config.yaml](kind_config.yaml) pins Kubernetes v1.36.4. To move an existing cluster to this version, see [Cluster-Upgrade.md](Cluster-Upgrade.md).
+
 ```bash
 kind create cluster --name k8s --config k8s/kind_config.yaml
 kubectl get nodes

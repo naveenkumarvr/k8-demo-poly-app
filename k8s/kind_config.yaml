@@ -2,6 +2,7 @@ kind: Cluster # Tells kind to create a full Kubernetes cluster instead of anothe
 apiVersion: kind.x-k8s.io/v1alpha4 # Uses the stable kind cluster config schema supported by current kind releases.
 nodes: # Lists the Docker-backed Kubernetes nodes that will be created for this local cluster.
 - role: control-plane # Creates the main control-plane node that runs the API server, scheduler, and controller manager.
+  image: kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed # Kubernetes 1.36 (kind v0.33.0); Envoy Gateway v1.9 needs 1.33-1.36.
   extraPortMappings: # Publishes ports from the control-plane container to your Mac so local traffic can reach workloads.
   - containerPort: 80 # Exposes port 80 inside the kind node, commonly used for HTTP ingress traffic.
     hostPort: 80 # Binds Mac port 80 to the node's port 80 so you can open HTTP services with localhost or your host IP.
@@ -10,6 +11,8 @@ nodes: # Lists the Docker-backed Kubernetes nodes that will be created for this 
     hostPort: 443 # Binds Mac port 443 to the node's port 443 so local HTTPS traffic reaches the cluster directly.
     protocol: TCP # Uses TCP because HTTPS also runs over TCP.
 - role: worker # Adds a worker node so application pods can be scheduled away from the control plane, closer to a real cluster layout.
+  image: kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed # All nodes must run the same version.
 - role: worker # Adds a second worker node to test multi-node scheduling, load distribution, and replica placement.
+  image: kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed # All nodes must run the same version.
 networking: # Overrides cluster networking behavior where kind's defaults are not enough for local access.
   apiServerAddress: "0.0.0.0" # Makes the Kubernetes API server listen on all host interfaces so it is reachable beyond localhost when needed.
