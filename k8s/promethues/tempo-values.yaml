@@ -1,0 +1,18 @@
+tempo:
+  reportingEnabled: false
+
+  metricsGenerator:
+    enabled: false
+
+  storage:
+    trace:
+      backend: local
+
+persistence:
+  enabled: false
+
+gateway:
+  enabled: true
+
+tempoQuery:
+  enabled: true
